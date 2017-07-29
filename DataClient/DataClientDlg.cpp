@@ -59,7 +59,7 @@ BEGIN_MESSAGE_MAP(CDataClientDlg, CDialogEx)
     ON_WM_SYSCOMMAND()
     ON_WM_PAINT()
     ON_WM_QUERYDRAGICON()
-    ON_BN_CLICKED(IDC_BTN_SERVER, &CDataClientDlg::OnBnClickedBtnServer)
+    //    ON_BN_CLICKED(IDC_BTN_SERVER, &CDataClientDlg::OnBnClickedBtnServer)
     ON_BN_CLICKED(IDC_BTN_SEND, &CDataClientDlg::OnBnClickedBtnSend)
     ON_WM_DESTROY()
 END_MESSAGE_MAP()
@@ -96,11 +96,24 @@ BOOL CDataClientDlg::OnInitDialog()
     SetIcon(m_hIcon, TRUE);         // 设置大图标
     SetIcon(m_hIcon, FALSE);        // 设置小图标
 
-    //初始化服务器IP和端口到界面编辑框中
-    SetDlgItemText(IDC_EDIT_SERVER_IP, TEXT("127.0.0.1")); //IP
-    SetDlgItemInt(IDC_EDIT_SERVER_PORT, 8888); //端口
-
     SetDlgItemText(IDC_EDIT_SEND, TEXT("45.875")); //初始化发送编辑框数值.
+
+
+    //启动模拟服务器
+    //////////////////////////////////////////////////////////////////////////
+    /*
+    //正式版本需要删除掉
+    CServerTCP *pServer = new CServerTCP(8888); //创建模拟服务器封装类
+    mServerSock = pServer->getSock(); //保存其socket
+    pServer->start(); //启动线程
+    Sleep(300); //sleep是为了让服务器先完全启动起来, 方便后面连接
+    //*/
+    //////////////////////////////////////////////////////////////////////////
+
+    //客户端
+    mClient.setListener(this); //设置事件监听器
+    mClient.setServer(TEXT("127.0.0.1"), 8888); //设置服务器IP和端口
+    mClient.start(); //启动数据接收线程
 
 
 
@@ -157,62 +170,11 @@ HCURSOR CDataClientDlg::OnQueryDragIcon()
 }
 
 
-//连接/断开服务器
-void CDataClientDlg::OnBnClickedBtnServer()
-{
-    GetDlgItem(IDC_BTN_SERVER)->EnableWindow(FALSE); //禁用按钮, 避免连续多次点击
-
-    CString tStr;
-    GetDlgItemText(IDC_BTN_SERVER, tStr); //获取按钮文本
-    if(tStr == TEXT("连接")) //如果是连接,则进行连接操作
-    {
-        CString strServerIP;
-        GetDlgItemText(IDC_EDIT_SERVER_IP, strServerIP); //获取界面上输入的IP
-        int serverPort = GetDlgItemInt(IDC_EDIT_SERVER_PORT); //获取界面上输入的端口
-
-        //启动模拟服务器
-        //////////////////////////////////////////////////////////////////////////
-        //正式版本需要删除掉
-        CServerTCP *pServer = new CServerTCP(serverPort); //创建模拟服务器封装类
-        mServerSock = pServer->getSock(); //保存其socket
-        pServer->start(); //启动线程
-        Sleep(300); //sleep是为了让服务器先完全启动起来, 方便后面连接
-        //////////////////////////////////////////////////////////////////////////
-
-
-        //客户端
-        mClient.setListener(this); //设置事件监听器
-        mClient.setServer(strServerIP, serverPort); //设置服务器IP和端口
-        mClient.start(); //启动数据接收线程
-    }
-    else //否则是断开操作
-    {
-        mClient.stop();//断开连接
-
-        //停止模拟服务器
-        //////////////////////////////////////////////////////////////////////////
-        //正式版本需要删除掉
-        CSocketTCP sock(mServerSock);
-        sock.close();
-        //////////////////////////////////////////////////////////////////////////
-    }
-
-
-
-}
 
 
 void CDataClientDlg::OnBnClickedBtnSend()
 {
     CString tStr;
-    GetDlgItemText(IDC_BTN_SERVER, tStr);
-    if(tStr == TEXT("连接"))//说明还未连接服务器,不能发送
-    {
-        MessageBox(TEXT("服务器未连接"));
-        return;
-    }
-
-
     GetDlgItemText(IDC_EDIT_SEND, tStr); //获取编辑框中输入的发送的数据
     float val = atof(tStr);
     char buf[0x10] = {0};
@@ -225,8 +187,11 @@ void CDataClientDlg::OnBnClickedBtnSend()
 //连接事件
 void CDataClientDlg::onConnect(BOOL bSuccess)
 {
-    GetDlgItem(IDC_BTN_SERVER)->EnableWindow(TRUE); //让按钮可点击(前面禁用了)
-    SetDlgItemText(IDC_BTN_SERVER, bSuccess ? "断开" : "连接"); //根据状态, 设置按钮文字
+    if(bSuccess == FALSE)
+    {
+        MessageBox(TEXT("连接服务器失败!!! 程序将自动退出"));
+        PostMessage(WM_CLOSE);
+    }
 }
 
 //数据事件
@@ -252,14 +217,15 @@ void CDataClientDlg::onRecv(const char *pBuf, int len)
 //断开连接事件
 void CDataClientDlg::onDisconnect()
 {
-    SetDlgItemText(IDC_BTN_SERVER, "连接");
-    GetDlgItem(IDC_BTN_SERVER)->EnableWindow(TRUE);
 
-    //////////////////////////////////////////////////////////////////////////
-    //正式版本需要删除掉
-    CSocketTCP sock(mServerSock);
-    sock.close();
-    //////////////////////////////////////////////////////////////////////////
+    /* //////////////////////////////////////////////////////////////////////////
+     //正式版本需要删除掉
+     CSocketTCP sock(mServerSock);
+     sock.close();
+     //////////////////////////////////////////////////////////////////////////*/
+
+    MessageBox(TEXT("连接已经断开!!!!! 程序将自动退出"));
+    PostMessage(WM_CLOSE);
 
 }
 
@@ -274,9 +240,9 @@ void CDataClientDlg::OnDestroy()
 
     mClient.stop();
 
-    //////////////////////////////////////////////////////////////////////////
+    /*//////////////////////////////////////////////////////////////////////////
     //正式版本需要删除掉
     CSocketTCP sock(mServerSock);
     sock.close();
-    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////*/
 }

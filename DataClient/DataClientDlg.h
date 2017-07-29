@@ -43,7 +43,7 @@ protected:
     afx_msg HCURSOR OnQueryDragIcon();
     DECLARE_MESSAGE_MAP()
 public:
-    afx_msg void OnBnClickedBtnServer(); //连接/断开服务器按钮响应函数
+    //    afx_msg void OnBnClickedBtnServer(); //连接/断开服务器按钮响应函数
     afx_msg void OnBnClickedBtnSend(); //发送响应函数
     afx_msg void OnDestroy(); //对话框销毁
 };
